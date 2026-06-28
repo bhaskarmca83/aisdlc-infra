@@ -1,0 +1,22 @@
+replicaCount: 1
+image:
+  repository: YOUR_ECR_REPO/aisdlc-orchestrator
+  tag: latest
+  pullPolicy: IfNotPresent
+service:
+  type: ClusterIP
+  port: 8000
+resources:
+  limits:
+    cpu: "2"
+    memory: 4Gi
+  requests:
+    cpu: "500m"
+    memory: 1Gi
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 5
+env:
+  REDIS_URL: redis://redis:6379
+  AWS_REGION: us-east-1
