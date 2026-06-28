@@ -1,0 +1,29 @@
+replicaCount: 2
+
+image:
+  tag: staging-latest
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 4
+
+ingress:
+  enabled: true
+  className: nginx
+  host: api.staging.aisdlc.internal
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+
+resources:
+  limits:
+    cpu: "2"
+    memory: 4Gi
+  requests:
+    cpu: "500m"
+    memory: 1Gi
+
+env:
+  DEPLOY_ENV: staging
+  AGENT_MAX_RETRY: "2"

@@ -1,0 +1,35 @@
+name: Terraform Apply — Prod
+
+on:
+  push:
+    branches: [production]
+    paths: ['terraform/**']
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    environment: prod   # requires 2 reviewers configured in GitHub env settings
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN_PROD }}
+          aws-region: us-east-1
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.9.0"
+
+      - name: Terraform Init
+        run: terraform -chdir=terraform init -backend-config=backend.hcl
+
+      - name: Terraform Plan (required reviewers must approve)
+        run: terraform -chdir=terraform plan -var-file=envs/prod.tfvars -out=prod.tfplan
+
+      - name: Terraform Apply
+        run: terraform -chdir=terraform apply prod.tfplan

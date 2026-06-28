@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "aisdlc-orchestrator.fullname" . }}-config
+  labels:
+    {{- include "aisdlc-orchestrator.labels" . | nindent 4 }}
+data:
+  DEPLOY_ENV: {{ .Values.env.DEPLOY_ENV | default "dev" | quote }}
+  GCP_PROJECT_ID: {{ .Values.env.GCP_PROJECT_ID | default "" | quote }}
+  CONFLUENCE_SPACE_KEY: "SD"
+  JIRA_PROJECT_KEY: "CTS"
+  JIRA_CLOUD_ID: "21ffd3eb-a8a6-4b00-86ae-b9a08a8a34e9"
+  GITHUB_OWNER: "bhaskarmca83"
+  AGENT_MAX_RETRY: {{ .Values.env.AGENT_MAX_RETRY | default "2" | quote }}

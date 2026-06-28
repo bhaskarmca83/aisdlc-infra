@@ -1,0 +1,19 @@
+replicaCount: 1
+
+image:
+  tag: dev-latest
+
+autoscaling:
+  enabled: false
+
+ingress:
+  enabled: true
+  className: nginx
+  host: api.dev.aisdlc.internal
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "300"
+
+env:
+  DEPLOY_ENV: dev
+  AGENT_MAX_RETRY: "3"

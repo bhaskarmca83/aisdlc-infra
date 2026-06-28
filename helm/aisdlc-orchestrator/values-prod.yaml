@@ -1,0 +1,31 @@
+replicaCount: 3
+
+image:
+  tag: prod-latest
+  pullPolicy: Always
+
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 10
+
+ingress:
+  enabled: true
+  className: nginx
+  host: api.aisdlc.yourcompany.com
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "600"
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+
+resources:
+  limits:
+    cpu: "4"
+    memory: 8Gi
+  requests:
+    cpu: "1"
+    memory: 2Gi
+
+env:
+  DEPLOY_ENV: prod
+  AGENT_MAX_RETRY: "2"
