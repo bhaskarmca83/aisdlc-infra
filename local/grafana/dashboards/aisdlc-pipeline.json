@@ -1,0 +1,191 @@
+{
+  "title": "AI SDLC Pipeline",
+  "uid": "aisdlc-pipeline",
+  "version": 1,
+  "schemaVersion": 39,
+  "refresh": "5s",
+  "time": { "from": "now-1h", "to": "now" },
+  "timepicker": {},
+  "tags": ["aisdlc"],
+  "templating": {
+    "list": [
+      {
+        "name": "execution_id",
+        "label": "Run (execution_id)",
+        "type": "query",
+        "datasource": { "type": "loki", "uid": "loki" },
+        "query": "label_values({app=\"aisdlc-orchestrator\"} | json | execution_id != \"\", execution_id)",
+        "refresh": 2,
+        "includeAll": true,
+        "allValue": ".*",
+        "current": {}
+      },
+      {
+        "name": "agent",
+        "label": "Agent",
+        "type": "custom",
+        "query": "All,confluence_agent,story_agent,design_agent,implementation_agent,test_agent,review_agent,deploy_agent,e2e_test_agent",
+        "includeAll": true,
+        "allValue": ".*",
+        "current": {}
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Pipeline Run — Live Log Stream",
+      "type": "logs",
+      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 8 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": true,
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "expr": "{app=\"aisdlc-orchestrator\"} | json | execution_id=~\"$execution_id\"",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "Errors",
+      "type": "logs",
+      "gridPos": { "x": 0, "y": 8, "w": 24, "h": 6 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": false,
+        "showLabels": true,
+        "showTime": true,
+        "sortOrder": "Descending",
+        "wrapLogMessage": true
+      },
+      "targets": [
+        {
+          "expr": "{app=\"aisdlc-orchestrator\", event_type=\"error\"} | json | execution_id=~\"$execution_id\"",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Events by Type",
+      "type": "barchart",
+      "gridPos": { "x": 0, "y": 14, "w": 8, "h": 8 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "options": {
+        "orientation": "auto",
+        "xTickLabelRotation": 0,
+        "groupWidth": 0.7,
+        "barWidth": 0.97,
+        "stacking": "none",
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "targets": [
+        {
+          "expr": "sum by (event_type) (count_over_time({app=\"aisdlc-orchestrator\"} | json | event_type != \"\" | execution_id=~\"$execution_id\" [$__interval]))",
+          "legendFormat": "{{event_type}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Events by Agent",
+      "type": "barchart",
+      "gridPos": { "x": 8, "y": 14, "w": 8, "h": 8 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "options": {
+        "orientation": "horizontal",
+        "groupWidth": 0.7,
+        "barWidth": 0.97,
+        "stacking": "none",
+        "legend": { "displayMode": "list", "placement": "bottom" }
+      },
+      "targets": [
+        {
+          "expr": "sum by (agent) (count_over_time({app=\"aisdlc-orchestrator\"} | json | agent != \"\" | execution_id=~\"$execution_id\" [$__interval]))",
+          "legendFormat": "{{agent}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Error Rate (per min)",
+      "type": "timeseries",
+      "gridPos": { "x": 16, "y": 14, "w": 8, "h": 8 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "options": {
+        "legend": { "displayMode": "list", "placement": "bottom" },
+        "tooltip": { "mode": "single" }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "fixed", "fixedColor": "red" },
+          "custom": { "lineWidth": 2, "fillOpacity": 10 }
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum(count_over_time({app=\"aisdlc-orchestrator\", event_type=\"error\"} | json [1m]))",
+          "legendFormat": "errors/min",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Agent Logs — Filtered by Agent",
+      "type": "logs",
+      "gridPos": { "x": 0, "y": 22, "w": 24, "h": 8 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "options": {
+        "dedupStrategy": "none",
+        "enableLogDetails": true,
+        "prettifyLogMessage": true,
+        "showLabels": true,
+        "showTime": true,
+        "sortOrder": "Ascending",
+        "wrapLogMessage": false
+      },
+      "targets": [
+        {
+          "expr": "{app=\"aisdlc-orchestrator\", agent=~\"$agent\"} | json | execution_id=~\"$execution_id\"",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Stage Timing (duration_ms)",
+      "type": "table",
+      "gridPos": { "x": 0, "y": 30, "w": 24, "h": 7 },
+      "datasource": { "type": "loki", "uid": "loki" },
+      "options": {
+        "frameIndex": 0,
+        "showHeader": true,
+        "sortBy": [{ "displayName": "Time", "desc": true }]
+      },
+      "targets": [
+        {
+          "expr": "{app=\"aisdlc-orchestrator\"} | json | duration_ms > 0 | execution_id=~\"$execution_id\" | line_format \"{{.stage}} | {{.agent}} | {{.message}} | {{.duration_ms}}ms\"",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ]
+    }
+  ]
+}

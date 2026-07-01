@@ -1,0 +1,42 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: aisdlc-orchestrator
+    static_configs:
+      - targets: [localhost]
+        labels:
+          app: aisdlc-orchestrator
+          __path__: /logs/aisdlc-orchestrator.log
+
+    pipeline_stages:
+      # Parse the JSON log line
+      - json:
+          expressions:
+            level:        level
+            agent:        agent
+            event_type:   event_type
+            stage:        stage
+            execution_id: execution_id
+            env:          env
+
+      # Promote high-cardinality fields to Loki labels (keep low-cardinality only)
+      - labels:
+          level:
+          agent:
+          event_type:
+          env:
+
+      # Use the log's own timestamp so ordering is correct even after restarts
+      - timestamp:
+          source: timestamp
+          format: RFC3339Nano
+          fallback_formats:
+            - RFC3339
