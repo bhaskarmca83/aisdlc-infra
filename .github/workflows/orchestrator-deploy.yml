@@ -1,0 +1,128 @@
+name: Orchestrator — Build & Deploy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'aisdlc-orchestrator/**'
+      - 'helm/aisdlc-orchestrator/**'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Target environment
+        required: true
+        default: dev
+        type: choice
+        options: [dev, staging, prod]
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
+  ECR_REPO:     aisdlc-orchestrator
+  AWS_REGION:   us-east-1
+
+jobs:
+  test:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: aisdlc-orchestrator
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -e ".[dev]" 2>/dev/null || pip install -r requirements.txt pytest
+
+      - name: Run tests
+        run: python -m pytest tests/ -q
+
+  build-push:
+    name: Build & push image
+    needs: test
+    runs-on: ubuntu-latest
+    outputs:
+      image_tag: ${{ steps.meta.outputs.sha_tag }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build & tag
+        id: meta
+        run: |
+          SHA_TAG=${GITHUB_SHA::8}
+          echo "sha_tag=${SHA_TAG}" >> "$GITHUB_OUTPUT"
+          docker build \
+            -t $ECR_REGISTRY/$ECR_REPO:${SHA_TAG} \
+            -t $ECR_REGISTRY/$ECR_REPO:latest \
+            aisdlc-orchestrator/
+          docker push $ECR_REGISTRY/$ECR_REPO:${SHA_TAG}
+          docker push $ECR_REGISTRY/$ECR_REPO:latest
+
+  deploy-dev:
+    name: Deploy → dev
+    needs: build-push
+    runs-on: ubuntu-latest
+    environment: dev
+    if: github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && inputs.environment == 'dev')
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --name ${{ secrets.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
+
+      - name: Helm upgrade
+        run: |
+          helm upgrade --install aisdlc-orchestrator \
+            helm/aisdlc-orchestrator \
+            --namespace aisdlc \
+            --create-namespace \
+            --values helm/aisdlc-orchestrator/values-dev.yaml \
+            --set image.tag=${{ needs.build-push.outputs.image_tag }} \
+            --set env.FRONTEND_ORIGIN=${{ secrets.FRONTEND_ORIGIN_DEV }} \
+            --wait --timeout 5m
+
+  deploy-staging:
+    name: Deploy → staging
+    needs: [build-push, deploy-dev]
+    runs-on: ubuntu-latest
+    environment: staging
+    if: github.event_name == 'workflow_dispatch' && inputs.environment == 'staging'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Update kubeconfig
+        run: aws eks update-kubeconfig --name ${{ secrets.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
+
+      - name: Helm upgrade
+        run: |
+          helm upgrade --install aisdlc-orchestrator \
+            helm/aisdlc-orchestrator \
+            --namespace aisdlc \
+            --values helm/aisdlc-orchestrator/values-staging.yaml \
+            --set image.tag=${{ needs.build-push.outputs.image_tag }} \
+            --wait --timeout 5m

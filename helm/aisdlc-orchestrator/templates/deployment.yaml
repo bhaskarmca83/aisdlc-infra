@@ -21,14 +21,35 @@ spec:
           ports:
             - containerPort: 8000
               protocol: TCP
+          # Non-sensitive config from ConfigMap
           envFrom:
             - configMapRef:
                 name: {{ include "aisdlc-orchestrator.fullname" . }}-config
+          # Sensitive credentials from Secret
           env:
             - name: REDIS_URL
               value: {{ .Values.env.REDIS_URL | quote }}
-            - name: AWS_REGION
-              value: {{ .Values.env.AWS_REGION | quote }}
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "aisdlc-orchestrator.fullname" . }}-secrets
+                  key: ANTHROPIC_API_KEY
+            - name: JIRA_EMAIL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "aisdlc-orchestrator.fullname" . }}-secrets
+                  key: JIRA_EMAIL
+            - name: JIRA_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "aisdlc-orchestrator.fullname" . }}-secrets
+                  key: JIRA_API_TOKEN
+            - name: AISDLC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "aisdlc-orchestrator.fullname" . }}-secrets
+                  key: AISDLC_API_KEY
+                  optional: true
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           livenessProbe:

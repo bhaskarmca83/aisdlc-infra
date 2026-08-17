@@ -18,5 +18,20 @@ autoscaling:
   minReplicas: 1
   maxReplicas: 5
 env:
-  REDIS_URL: redis://redis:6379
-  AWS_REGION: us-east-1
+  REDIS_URL:              redis://redis:6379
+  AWS_REGION:             us-east-1
+  DEPLOY_ENV:             dev
+  AGENT_MAX_RETRY:        "2"
+  GITHUB_OWNER:           bhaskarmca83
+  JIRA_BASE_URL:          https://bhaskarwork.atlassian.net
+  CONFLUENCE_BASE_URL:    https://bhaskarwork.atlassian.net/wiki
+  CONFLUENCE_PARENT_PAGE: "524458"
+  FRONTEND_ORIGIN:        http://localhost:5173
+  LOG_LEVEL:              INFO
+# Sensitive values — override per environment via values-dev/staging/prod.yaml
+# or inject via external-secrets-operator / sealed-secrets.
+# secrets:
+#   ANTHROPIC_API_KEY: ""
+#   JIRA_EMAIL: ""
+#   JIRA_API_TOKEN: ""
+#   AISDLC_API_KEY: ""
